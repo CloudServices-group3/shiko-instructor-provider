@@ -1,6 +1,6 @@
 using Application.Modules.Instructors;
 using Application.Modules.Instructors.Inputs;
-using Microsoft.AspNetCore.Mvc;
+using Application.Modules.Instructors.Outputs;
 using shiko_instructor_provider_api.Dtos;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +12,10 @@ builder.Services.AddSingleton<IInstructorService, InstructorService>();
 
 var app = builder.Build();
 
+app.UseHttpsRedirection();
+
+app.UseCors(x => x.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -20,16 +24,20 @@ if (app.Environment.IsDevelopment())
 // CREATE
 app.MapPost("/api/instructors", (CreateInstructorRequest request, IInstructorService service) =>
 {
-    var instructorInput = new CreateInstructorInput(request.FirstName, request.LastName, request.Title, request.Description);
-    var instructor = service.Create(instructorInput);
+    var input = new CreateInstructorInput(request.FirstName, request.LastName, request.Title, request.Description);
+    
+    var instructor = service.Create(input);
+    var dto = ToDto(instructor);
 
-    return Results.Created($"/api/instructors/{instructor.Id}", instructor);
+    return Results.Created($"/api/instructors/{dto.Id}", dto);
 });
 
 // GET ALL
 app.MapGet("/api/instructors", (IInstructorService service) =>
 {
-    var instructors = service.GetAll();
+    var instructors = service.GetAll()
+        .Select(ToDto);
+    
     return Results.Ok(instructors);
 });
 
@@ -37,28 +45,35 @@ app.MapGet("/api/instructors", (IInstructorService service) =>
 app.MapGet("/api/instructors/{id:guid}", (Guid id, IInstructorService service) =>
 {
     var instructor = service.GetById(id);
-    return instructor is null ? Results.NotFound() : Results.Ok(instructor);
+    return instructor is null ? Results.NotFound() : Results.Ok(ToDto(instructor));
 });
 
 // UPDATE
-app.MapPut("/api/instructors/{id:guid}", (Guid id, [FromBody] UpdateInstructorRequest request, IInstructorService service) =>
+app.MapPut("/api/instructors/{id:guid}", (Guid id, UpdateInstructorRequest request, IInstructorService service) =>
 {
-    var instructorInput = new UpdateInstructorInput(request.Id, request.FirstName, request.LastName, request.Title, request.Description);
-    var instructor = service.Update(instructorInput);
+    var input = new UpdateInstructorInput(id, request.FirstName, request.LastName, request.Title, request.Description);
+    var instructor = service.Update(input);
     
-    return Results.Ok(instructor);
+    return instructor is null ? Results.NotFound() : Results.Ok(ToDto(instructor));
 });
 
 // DELETE
 app.MapDelete("/api/instructors/{id:guid}", (Guid id, IInstructorService service) =>
 {
     var result = service.Delete(id);
-    return result ? Results.NoContent() : Results.BadRequest();
+    return result ? Results.NoContent() : Results.NotFound();
 });
 
-app.UseCors(x => x.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-
-app.UseHttpsRedirection();
+static InstructorDto ToDto(InstructorOutput instructor)
+{
+    return new InstructorDto(
+        instructor.Id,
+        instructor.FirstName,
+        instructor.LastName,
+        instructor.Title,
+        instructor.Description
+        );
+}
 
 app.Run();
 

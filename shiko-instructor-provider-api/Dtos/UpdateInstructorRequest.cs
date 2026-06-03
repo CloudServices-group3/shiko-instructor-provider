@@ -3,7 +3,6 @@
 public record UpdateInstructorRequest
 (
     //Guid CourseId,
-    Guid Id,
     string FirstName,
     string LastName,
     string Title,
