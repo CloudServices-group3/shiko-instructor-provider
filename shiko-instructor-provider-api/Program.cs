@@ -1,6 +1,7 @@
 using Application.Modules.Instructors;
 using shiko_instructor_provider_api.Endpoints;
 using shiko_instructor_provider_api.Security;
+using shiko_instructor_provider_api.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.MapOpenApiEndpoints();
 app.MapInstructorEndpoints();
 
 app.Run();
